@@ -116,6 +116,7 @@ void checkBackButton() {
   backCurrentState = digitalRead(Back);
   if (backCurrentState != backLastState && millis() - backLastTime > 500 && backCurrentState == LOW) {
     backLastTime = millis();
+    playOrPause = 0;
     fileName = getBackFileName(SD, fileName);
     printStateAndFileName("Back Audio...........");
     audio.connecttoFS(SD, fileName.c_str());
@@ -134,11 +135,11 @@ void checkPlayPauseButton() {
     playPauseLastState = playPauseCurrentState;
     if (playPauseCurrentState == LOW) {
       if (playOrPause == 0) {
-        printStateAndFileName("Play Audio...........");
+        printStateAndFileName("Pause Audio..........");
         audio.pauseResume();
         playOrPause = 1;
       } else if (playOrPause == 1) {
-        printStateAndFileName("Pause Audio..........");
+        printStateAndFileName("Play Audio...........");
         audio.pauseResume();
         playOrPause = 0;
       }
@@ -150,6 +151,7 @@ void checkNextButton() {
   nextCurrentState = digitalRead(Next);
   if (nextCurrentState != nextLastState && millis() - nextLastTime > 500 && nextCurrentState == LOW) {
     nextLastTime = millis();
+    playOrPause = 0;
     fileName = getNextFileName(SD, fileName);
     printStateAndFileName("Next Audio...........");
     audio.connecttoFS(SD, fileName.c_str());
