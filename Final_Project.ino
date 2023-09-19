@@ -39,6 +39,10 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 // Init Variables is storage name of media
 String fileName;
+String state;
+uint32_t TimeAudio;
+uint32_t TimeCurrentAudio;
+float progress = 0;
 
 // Variable using if button click and fix debounce button
 int backLastState = HIGH;  // the previous state from the input pin
@@ -82,18 +86,31 @@ void setup() {
     for (;;)
       ;  // Don't proceed, loop forever
   }
-  
+
   // Setup first play audio
   fileName = "Hero.m4a";
-  printStateAndFileName("First Audio..........");
+  state = "First Audio..........";
+  printStateAndFileName(state);
   audio.setPinout(0, I2S_DOUT, I2S_LRC);
   audio.setVolume(12);  // 0...21
-
   audio.connecttoFS(SD, fileName.c_str());
 }
 
 void loop() {
   audio.loop();
+  TimeAudio = audio.getAudioFileDuration();
+  TimeCurrentAudio = audio.getAudioCurrentTime();               // Sử dụng hàm để lấy thời gian hiện tại của bài hát
+  float progresscurrent = (float)TimeCurrentAudio / TimeAudio;  // Tính tỷ lệ tiến trình phát nhạc
+  if (progresscurrent != progress) {
+    progress = progresscurrent;
+    printStateAndFileName(state);
+    if (TimeAudio == 0 && isinf(progresscurrent)) {
+      fileName = getNextFileName(SD, fileName);
+      state = "Next Audio...........";
+      printStateAndFileName(state);
+      audio.connecttoFS(SD, fileName.c_str());
+    }
+  }
   checkBackButton();
   checkPlayPauseButton();
   checkNextButton();
@@ -104,7 +121,8 @@ void loop() {
     fileName.trim();
     fileName = fileName + ".m4a";
     Serial.println(fileName);
-    printStateAndFileName("Go to................");
+    state = "Go to................";
+    printStateAndFileName(state);
     if (fileName.length() > 1) {
       audio.connecttoFS(SD, fileName.c_str());
     }
@@ -118,7 +136,8 @@ void checkBackButton() {
     backLastTime = millis();
     playOrPause = 0;
     fileName = getBackFileName(SD, fileName);
-    printStateAndFileName("Back Audio...........");
+    state = "Back Audio...........";
+    printStateAndFileName(state);
     audio.connecttoFS(SD, fileName.c_str());
   }
   // save the the last state
@@ -135,11 +154,13 @@ void checkPlayPauseButton() {
     playPauseLastState = playPauseCurrentState;
     if (playPauseCurrentState == LOW) {
       if (playOrPause == 0) {
-        printStateAndFileName("Pause Audio..........");
+        state = "Pause Audio..........";
+        printStateAndFileName(state);
         audio.pauseResume();
         playOrPause = 1;
       } else if (playOrPause == 1) {
-        printStateAndFileName("Play Audio...........");
+        state = "Play Audio...........";
+        printStateAndFileName(state);
         audio.pauseResume();
         playOrPause = 0;
       }
@@ -153,7 +174,8 @@ void checkNextButton() {
     nextLastTime = millis();
     playOrPause = 0;
     fileName = getNextFileName(SD, fileName);
-    printStateAndFileName("Next Audio...........");
+    state = "Next Audio...........";
+    printStateAndFileName(state);
     audio.connecttoFS(SD, fileName.c_str());
   }
   // save the the last state
@@ -164,7 +186,6 @@ void printStateAndFileName(String nameButton) {
 
   int dotIndex = fileName.lastIndexOf(".");
   String audioName = "Play: " + fileName.substring(0, dotIndex);
-
   display.clearDisplay();
   display.setTextSize(1);
   display.setTextColor(WHITE);
@@ -172,5 +193,17 @@ void printStateAndFileName(String nameButton) {
   display.println(nameButton);
   display.setCursor(0, display.height() / 2);
   display.println(audioName);
+
+  int progressBarWidth = display.width();  // Độ rộng thanh kéo
+  int progressBarHeight = 4;               // Độ cao thanh kéo
+  int progressBarX = 0;
+  int progressBarY = display.height() * 9 / 10;
+  int progressBarFilledWidth = progressBarWidth * progress;
+
+  // Vẽ khung thanh kéo
+  display.drawRect(progressBarX, progressBarY, progressBarWidth, progressBarHeight, WHITE);
+
+  // Vẽ phần đã phát
+  display.fillRect(progressBarX, progressBarY, progressBarFilledWidth, progressBarHeight, WHITE);
   display.display();
 }
